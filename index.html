@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MachinaSense</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one long control-room page. Evaluation first (proof), then a scenario explorer (evidence), then alert cards. */
+:root{
+  --bg:#ECEFF1; --surface:#F8FAFB; --sunken:#EEF2F4; --ink:#0F1A21; --ink2:#44565F; --muted:#6C7E87; --line:#CFD8DD;
+  --accent:#1B5FCB; --accent-ink:#F5F9FF;
+  --watch:#A66A00; --warn:#C4541C; --crit:#C02626;
+  --f-head:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1317; --surface:#151C22; --sunken:#10171C; --ink:#E7EEF2; --ink2:#AAB9C1; --muted:#7F919B; --line:#27333B;
+    --accent:#5B9BFF; --accent-ink:#071224;
+    --watch:#E3B341; --warn:#F0883E; --crit:#FF6B6B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1317; --surface:#151C22; --sunken:#10171C; --ink:#E7EEF2; --ink2:#AAB9C1; --muted:#7F919B; --line:#27333B;
+  --accent:#5B9BFF; --accent-ink:#071224;
+  --watch:#E3B341; --warn:#F0883E; --crit:#FF6B6B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-block:26px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 24px}
+.brand{font-family:var(--f-head);font-weight:700;font-size:38px;letter-spacing:.01em;margin:0;line-height:1;text-transform:uppercase}
+.brand b{color:var(--accent);font-weight:700}
+.tag{margin:0;color:var(--ink2);max-width:58ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;min-width:0}
+h2{font-family:var(--f-head);font-weight:700;font-size:24px;letter-spacing:.01em;margin:0 0 4px;text-wrap:balance}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.sub{color:var(--ink2);margin:0 0 14px;max-width:80ch}
+button,select,textarea,input{font:inherit;color:var(--ink)}
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
+.chip{background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:7px 14px;cursor:pointer;font-weight:500}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:6px;padding:9px 18px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+:is(button,select,textarea,input,svg):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.summary{font-size:17px;margin:12px 0 16px;max-width:90ch}
+.cols{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:22px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:9px 12px;background:var(--sunken);border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+tr:first-child td{border-top:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.us{font-weight:600}
+.big{font-family:var(--f-head);font-weight:700;font-size:26px;line-height:1.1}
+.mono{font-family:var(--f-mono);font-size:12px}
+.cm td,.cm th{text-align:center;padding:8px 6px;font-size:13px;font-variant-numeric:tabular-nums}
+.cm th:first-child,.cm td:first-child{text-align:left}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:10px}
+select{background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:8px 10px;max-width:100%;min-width:0}
+.info{font-size:14px;color:var(--ink2);margin:0 0 12px;max-width:100ch}
+.chartbox{min-width:0}
+.chartbox svg{display:block;max-width:100%}
+.readout{min-height:44px;font-family:var(--f-mono);font-size:12px;color:var(--ink2);margin:8px 0 0;display:flex;flex-wrap:wrap;gap:4px 16px}
+.readout b{color:var(--ink);font-weight:500}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--ink2);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--ink2)}
+.legend i.exp{border-color:var(--accent)}
+.legend i.band{height:10px;border:0;background:var(--crit);opacity:.2;width:14px}
+.legend i.tick{width:0;height:12px;border-top:0;border-left:2px solid var(--ink2)}
+.legend i.dot{border-top:2px dotted var(--ink2)}
+.cards{display:grid;gap:14px}
+.card{border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--surface);min-width:0}
+.card h3{margin:0;font-family:var(--f-head);font-size:20px;font-weight:700}
+.chead{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-bottom:6px}
+.sev{display:inline-flex;gap:6px;align-items:center;font-weight:600;font-size:13px;border-radius:5px;padding:3px 9px;border:1px solid currentColor}
+.sev.critical{color:var(--crit)}.sev.warning{color:var(--warn)}.sev.watch{color:var(--watch)}
+.when{font-size:13px;color:var(--ink2)}
+.lab{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px}
+.ev{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(0,2fr) 64px;gap:4px 12px;align-items:center;font-size:13px;padding:5px 0;border-top:1px solid var(--line)}
+.ev:first-of-type{border-top:0}
+.evn{min-width:0}
+.evn small{display:block;color:var(--muted);font-family:var(--f-mono);font-size:11px;overflow-wrap:anywhere}
+.bar{height:8px;background:var(--sunken);border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--bar,var(--accent))}
+.ev b{text-align:right;font-family:var(--f-mono);font-size:12px;font-weight:500}
+@media (max-width:560px){.ev{grid-template-columns:minmax(0,1fr) 64px}.ev .bar{grid-column:1 / -1;order:3}}
+.inf{margin:0;padding:10px 12px;background:var(--sunken);border:1px solid var(--line);border-radius:6px;font-size:14px}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:12px 0 0;padding:0;list-style:none}
+@media (max-width:900px){.steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media (max-width:520px){.steps{grid-template-columns:minmax(0,1fr)}}
+.steps h3{font-family:var(--f-head);font-size:18px;margin:0 0 4px}
+.steps p{margin:0;font-size:14px;color:var(--ink2)}
+textarea{width:100%;min-height:90px;background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:9px 11px;font-family:var(--f-mono);font-size:12px}
+details{border:1px solid var(--line);border-radius:6px;margin-top:10px}
+summary{cursor:pointer;font-weight:600;padding:10px 14px}
+details .in{padding:0 14px 14px}
+.lim{margin:8px 0 0;padding-left:20px;display:grid;gap:6px;color:var(--ink2)}
+.err{color:var(--crit);font-size:14px;margin:8px 0 0}
+body{margin:0}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="brand">Machina<b>Sense</b></h1>
+    <p class="tag">Condition-aware fault detection for industrial motors. Every alert shows the sensor evidence, a severity and the pattern it was matched to.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="ev-h">
+    <p class="eyebrow">Held-out evaluation</p>
+    <h2 id="ev-h">24 scenarios the detector never saw</h2>
+    <p class="sub">Models and thresholds were fitted on 16 training scenarios (seeds 1 to 16). The test set is 24 different scenarios (seeds 1001 to 1024) with faults, healthy runs, noise, missing samples and a load change. Pick how rough the test conditions are.</p>
+    <div class="seg" id="presets" role="group" aria-label="Test conditions"></div>
+    <p class="note" id="presetdesc"></p>
+    <p class="summary" id="summary"></p>
+    <div class="cols">
+      <div class="tw"><table id="metrics"></table></div>
+      <div>
+        <p class="lab" style="margin-top:0">Diagnosis of detected faults</p>
+        <div class="tw"><table class="cm" id="confusion"></table></div>
+        <p class="note" id="foot"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="ex-h">
+    <p class="eyebrow">Scenario explorer</p>
+    <h2 id="ex-h">Watch one machine fail</h2>
+    <div class="tools">
+      <label for="scn" class="lab" style="margin:0">Scenario</label>
+      <select id="scn"></select>
+    </div>
+    <p class="info" id="info"></p>
+    <div class="chartbox" id="chart"></div>
+    <div class="readout" id="readout" aria-live="off">Move over the chart to read exact values.</div>
+    <div class="legend">
+      <span><i></i>Sensor reading</span><span><i class="exp"></i>Expected for current load</span>
+      <span><i class="band"></i>MachinaSense alert</span><span><i class="tick"></i>Static-limit alarm</span><span><i class="dot"></i>Fault onset (ground truth, hidden from the detector)</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="al-h">
+    <p class="eyebrow">Alerts for this scenario</p>
+    <h2 id="al-h">What the detector reports</h2>
+    <div class="cards" id="alerts"></div>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow">Method</p>
+    <h2>How it decides</h2>
+    <ol class="steps">
+      <li><h3>1. Learn normal</h3><p>Each sensor is modelled from load and ambient temperature using healthy data only, so a busy shift is not mistaken for a fault.</p></li>
+      <li><h3>2. Measure the gap</h3><p>The difference between reading and expectation is scaled to standard deviations. The scale widens automatically if a sensor gets noisier.</p></li>
+      <li><h3>3. Filter and persist</h3><p>A median filter removes spikes, a smoothing filter tracks drift, and missing samples are skipped. An alert needs several consecutive exceedances.</p></li>
+      <li><h3>4. Rank and explain</h3><p>Severity comes from how far the worst sensor sits from expected. The pattern across sensors is matched to learned fault signatures.</p></li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow">Bring your own data</p>
+    <h2>Run it on a CSV</h2>
+    <p class="sub">One row per sample, a header row, any number of numeric sensor columns. Optional columns named <span class="mono">load</span> and <span class="mono">ambient</span> are used as operating conditions, and a column named <span class="mono">time</span> or <span class="mono">timestamp</span> sets the time axis. The first part of the file is treated as healthy and used to learn normal behaviour.</p>
+    <div class="tools">
+      <input type="file" id="csvfile" accept=".csv,.txt,text/csv">
+      <label for="csvfrac" class="lab" style="margin:0">Healthy baseline</label>
+      <select id="csvfrac"><option value="0.2">first 20%</option><option value="0.3" selected>first 30%</option><option value="0.4">first 40%</option></select>
+    </div>
+    <details><summary>Or paste CSV text</summary><div class="in"><textarea id="csvtext" spellcheck="false" placeholder="time,load,temp,vibration&#10;..."></textarea></div></details>
+    <div class="tools" style="margin-top:12px"><button class="btn" id="csvgo" type="button">Analyze my data</button></div>
+    <p class="err" id="csverr" role="alert"></p>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow">Read this before trusting the numbers</p>
+    <h2>Limits of this prototype</h2>
+    <ul class="lim">
+      <li>The telemetry is simulated. Results show the method works on these fault models and conditions. They are not a claim about performance on a real plant.</li>
+      <li>The simulator and the detector were written by the same person, so the model family fits the data well. Real machines have nonlinear and drifting behaviour that will cost accuracy.</li>
+      <li>The load change stays inside what a linear-plus-quadratic model can extrapolate. A truly new operating regime needs fresh healthy data.</li>
+      <li>Fault signatures come from four fault types. Anything else is reported as unclassified, with the measured evidence.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+// ==ENGINE START==
+const SENSORS=[
+  {key:'vib_rms',label:'Vibration RMS',unit:'mm/s',dp:2},
+  {key:'vib_env',label:'Bearing envelope',unit:'g',dp:2},
+  {key:'temp',label:'Winding temperature',unit:'°C',dp:1},
+  {key:'current',label:'Motor current',unit:'A',dp:2}
+];
+const FAULTS={
+  bearing:{label:'Bearing wear',eff:{vib_rms:1.3,vib_env:0.9,temp:3,current:0.1},action:'Inspect and re-lubricate the drive-end and non-drive-end bearings. Plan a replacement at the next stop if the envelope keeps rising.'},
+  imbalance:{label:'Rotor imbalance or misalignment',eff:{vib_rms:2.6,vib_env:0.12,temp:1.5,current:0.05},action:'Check coupling alignment, shaft run-out and impeller deposits. Re-balance if the vibration stays high at constant load.'},
+  overload:{label:'Overload or winding degradation',eff:{vib_rms:0.3,vib_env:0.04,temp:8,current:2.0},action:'Check the driven load, the supply balance and the winding insulation resistance. Reduce duty until checked.'},
+  cooling:{label:'Cooling failure',eff:{vib_rms:0,vib_env:0,temp:14,current:0},action:'Clean the fan, shroud and cooling fins, and check airflow and ambient conditions. Temperature is rising without extra current or vibration.'}
+};
+const FKEYS=Object.keys(FAULTS);
+const NOISE={vib_rms:0.08,vib_env:0.03,temp:0.4,current:0.15};
+const SEV_WARN=4, SEV_CRIT=8;
+
+function rng(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+const med3=(a,b,c)=>Math.max(Math.min(a,b),Math.min(Math.max(a,b),c));
+const median=a=>{if(!a.length)return NaN;const t=[...a].sort((x,y)=>x-y);return t[t.length>>1];};
+
+/* ---- telemetry simulator: 3-phase pump motor, one sample every 10 minutes ---- */
+function simulate(o){
+  const rnd=rng(o.seed*9973+17);
+  const g=()=>{let u=0;while(u===0)u=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd());};
+  const days=o.days||14,n=days*144;
+  const load=new Float64Array(n),amb=new Float64Array(n),y={};
+  SENSORS.forEach(s=>y[s.key]=new Float64Array(n));
+  const onset=o.fault?Math.round(o.onsetDay*144):null,ramp=Math.round((o.rampDays||4)*144);
+  const shiftAt=o.shiftDay!=null?Math.round(o.shiftDay*144):null;
+  const nz=o.noise||1,miss=o.miss||0,eff=o.fault?FAULTS[o.fault].eff:null;
+  let a1=0,a2=0,T=null;const gap={};SENSORS.forEach(s=>gap[s.key]=0);
+  for(let i=0;i<n;i++){
+    const h=(i%144)/6;
+    a1=0.97*a1+0.25*g();a2=0.995*a2+0.1*g();
+    let L=55+16*Math.sin(2*Math.PI*(h-8)/24)+4*a1+1.5*g();
+    if(shiftAt!=null&&i>=shiftAt)L+=22;
+    L=Math.min(98,Math.max(25,L));
+    const A=26+6*Math.sin(2*Math.PI*(h-15)/24)+1.5*a2+0.2*g();
+    load[i]=L;amb[i]=A;
+    let sev=0;if(o.fault&&i>=onset)sev=Math.pow(Math.min(1,(i-onset)/ramp),1.3)*o.mag;
+    const e=k=>eff?eff[k]*sev:0;
+    const Tss=A+18+0.28*L+e('temp');T=T==null?Tss:T+(Tss-T)/6;
+    const vals={vib_rms:1.6+0.012*L+0.0001*(L-55)*(L-55)+e('vib_rms'),vib_env:0.30+0.002*L+e('vib_env'),temp:T,current:4+0.12*L+e('current')};
+    for(const s of SENSORS){
+      const k=s.key;let v=vals[k]+NOISE[k]*nz*g();
+      if(rnd()<0.003*nz)v+=(rnd()<0.5?-1:1)*6*NOISE[k]*nz;
+      if(miss>0){
+        if(gap[k]>0){gap[k]--;v=NaN;}
+        else if(rnd()<miss/40){gap[k]=2+Math.floor(rnd()*22);v=NaN;}
+        else if(rnd()<miss/2)v=NaN;
+      }
+      y[k][i]=v;
+    }
+  }
+  return {id:'S'+o.seed,n,t0:Date.UTC(2026,8,1),dt:10,tz:'UTC',load,amb,sensors:SENSORS,y,
+    truth:{fault:o.fault||null,onset,ramp,mag:o.mag||0,shiftAt,noise:nz,miss}};
+}
+
+/* ---- expected-value model: each sensor regressed on load, ambient and their lagged values ---- */
+function feats(ds){
+  const n=ds.n,cols=[new Float64Array(n).fill(1)],covs=[];
+  if(ds.load)covs.push(ds.load);if(ds.amb)covs.push(ds.amb);
+  covs.forEach(c=>{
+    const raw=new Float64Array(n),lag=new Float64Array(n);let last=null,ew=null;
+    for(let i=0;i<n;i++){let v=c[i];if(!Number.isFinite(v))v=last!=null?last:0;last=v;raw[i]=v;ew=ew==null?v:ew+(v-ew)/6;lag[i]=ew;}
+    cols.push(raw,lag);
+  });
+  if(ds.load){const q=new Float64Array(n);for(let i=0;i<n;i++)q[i]=Math.pow(cols[1][i]-50,2)/100;cols.push(q);}
+  const nf=cols.length,X=new Float64Array(n*nf);
+  for(let f=0;f<nf;f++)for(let i=0;i<n;i++)X[i*nf+f]=cols[f][i];
+  return {X,nf};
+}
+function solve(A,b){
+  const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){
+    let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    [M[c],M[p]]=[M[p],M[c]];const d=M[c][c]||1e-12;
+    for(let r=0;r<n;r++){if(r===c)continue;const f=M[r][c]/d;for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}
+  }
+  return M.map((r,i)=>r[n]/(r[i]||1e-12));
+}
+function fit(segs){
+  const keys=segs[0].ds.sensors.map(s=>s.key);
+  const F=segs.map(s=>({s,f:feats(s.ds)})),nf=F[0].f.nf;
+  const beta={},sigma={},dAbs={};
+  for(const k of keys){
+    const A=Array.from({length:nf},()=>new Array(nf).fill(0)),b=new Array(nf).fill(0);
+    for(const {s,f} of F){const yy=s.ds.y[k];
+      for(let i=s.from;i<s.to;i++){const v=yy[i];if(!Number.isFinite(v))continue;
+        for(let p=0;p<nf;p++){const xp=f.X[i*nf+p];b[p]+=xp*v;for(let q=0;q<nf;q++)A[p][q]+=xp*f.X[i*nf+q];}}}
+    for(let p=1;p<nf;p++)A[p][p]*=1+1e-9;
+    beta[k]=solve(A,b);
+    const res=[],dd=[];
+    for(const {s,f} of F){let prev=null;
+      for(let i=s.from;i<s.to;i++){const v=s.ds.y[k][i];if(!Number.isFinite(v)){prev=null;continue;}
+        let p=0;for(let q=0;q<nf;q++)p+=beta[k][q]*f.X[i*nf+q];
+        const r=v-p;res.push(r);if(prev!=null)dd.push(Math.abs(r-prev));prev=r;}}
+    const m=median(res);sigma[k]=Math.max(1e-9,1.4826*median(res.map(r=>Math.abs(r-m))));
+    const cap=5*sigma[k];dAbs[k]=Math.max(1e-9,dd.reduce((s,v)=>s+Math.min(v,cap),0)/Math.max(1,dd.length));
+  }
+  return {keys,nf,beta,sigma,dAbs};
+}
+
+/* ---- online scoring: residual in sigma units -> median-of-3 -> EWMA, with noise-adaptive scale ---- */
+function score(ds,model,lam){
+  lam=lam||0.08;
+  const n=ds.n,{X,nf}=feats(ds),keys=model.keys,K=keys.length;
+  const e={},pred={};keys.forEach(k=>{e[k]=new Float64Array(n);pred[k]=new Float64Array(n);});
+  const S=new Float64Array(n),who=new Int8Array(n),obs=new Uint8Array(n);
+  const st=keys.map(k=>({e:0,z1:0,z2:0,c:0,prev:null,gap:99,dEw:model.dAbs[k],m:20}));
+  for(let i=0;i<n;i++){
+    let any=0,best=0,bw=0;
+    for(let j=0;j<K;j++){
+      const k=keys[j],s=st[j],b=model.beta[k];
+      let p=0;for(let q=0;q<nf;q++)p+=b[q]*X[i*nf+q];
+      pred[k][i]=p;
+      const v=ds.y[k][i];
+      if(Number.isFinite(v)){
+        const r=v-p,rho=Math.min(5,Math.max(0.8,s.dEw/model.dAbs[k]));
+        if(s.prev!=null&&s.gap<=2){
+          const d=Math.min(Math.abs(r-s.prev),5*model.sigma[k]*rho);
+          s.dEw+=Math.max(0.004,1/(s.m+1))*(d-s.dEw);s.m++;
+        }
+        s.prev=r;s.gap=0;
+        const z=r/(model.sigma[k]*rho),zm=s.c>=2?med3(s.z2,s.z1,z):z;
+        s.z2=s.z1;s.z1=z;s.c++;s.e+=lam*(zm-s.e);any=1;
+      }else s.gap++;
+      e[k][i]=s.e;const a=Math.abs(s.e);if(a>best){best=a;bw=j;}
+    }
+    S[i]=best;who[i]=bw;obs[i]=any;
+  }
+  return {e,pred,S,who,obs};
+}
+function extract(sc,ds,P){
+  const alerts=[];let cur=null,run=0,first=-1,calm=0;
+  for(let i=0;i<ds.n;i++){
+    if(!sc.obs[i])continue;
+    const s=sc.S[i];
+    if(!cur){
+      if(s>=P.theta){if(run===0)first=i;run++;
+        if(run>=P.k){cur={startIdx:first,raiseIdx:i,endIdx:null,peakS:s,peakIdx:i};alerts.push(cur);calm=0;}}
+      else run=0;
+    }else{
+      if(s>cur.peakS){cur.peakS=s;cur.peakIdx=i;}
+      if(s<P.theta*P.closeRatio){calm++;if(calm>=P.close){cur.endIdx=i;cur=null;run=0;}}else calm=0;
+    }
+  }
+  return alerts;
+}
+function diagnose(sig,T){
+  const nrm=Math.hypot(...sig)||1,u=sig.map(v=>v/nrm);
+  const rank=Object.keys(T).map(f=>({key:f,cos:u.reduce((s,v,i)=>s+v*T[f][i],0)})).sort((a,b)=>b.cos-a.cos);
+  return {key:rank[0].cos>=0.75?rank[0].key:null,cos:rank[0].cos,top:rank[0].key,rank};
+}
+function enrich(alerts,ds,sc,ctx){
+  const keys=ctx.model.keys;
+  alerts.forEach((a,idx)=>{
+    a.no=idx+1;const p=a.peakIdx;
+    a.sev=a.peakS>=SEV_CRIT?'critical':a.peakS>=SEV_WARN?'warning':'watch';
+    a.sig=keys.map(k=>sc.e[k][p]);
+    a.evidence=keys.map((k,j)=>{
+      let so=0,sp=0,c=0;
+      for(let i=Math.max(0,p-5);i<=p;i++){const v=ds.y[k][i];if(Number.isFinite(v)){so+=v;sp+=sc.pred[k][i];c++;}}
+      const obs=c?so/c:NaN,exp=c?sp/c:sc.pred[k][p],sn=ds.sensors[j];
+      return {key:k,label:sn.label,unit:sn.unit,dp:sn.dp,obs,exp,dev:obs-exp,z:sc.e[k][p]};
+    }).sort((x,y)=>Math.abs(y.z)-Math.abs(x.z));
+    a.diag=ctx.templates?diagnose(a.sig,ctx.templates):null;
+  });
+  return alerts;
+}
+function baseSeries(ds,bm,c){
+  const n=ds.n,S=new Float64Array(n),obs=new Uint8Array(n),keys=Object.keys(bm.mu);
+  for(let i=0;i<n;i++){let any=0,fl=0;
+    for(const k of keys){const v=ds.y[k][i];if(Number.isFinite(v)){any=1;if(Math.abs(v-bm.mu[k])>c*bm.sd[k])fl=1;}}
+    S[i]=fl;obs[i]=any;}
+  return {S,obs};
+}
+const BASE_P={theta:0.5,k:6,close:12,closeRatio:1};
+
+/* ---- datasets ---- */
+const rep=(v,n)=>Array(n).fill(v);
+const PRESETS={
+  clean:{name:'Clean',noise:[1,1],miss:[0,0],shift:0,desc:'Noise 1x, no missing samples, no load change.'},
+  hidden:{name:'Hidden set',noise:[1,2],miss:[0,0.06],shift:0.5,desc:'Noise 1x to 2x, up to 6% missing samples, a load change in about half the scenarios.'},
+  harsh:{name:'Harsh',noise:[2,3],miss:[0.05,0.15],shift:1,desc:'Noise 2x to 3x, 5% to 15% missing samples, a load change in every scenario.'}
+};
+const TEST_TYPES=[...rep(null,6),...rep('bearing',5),...rep('imbalance',4),...rep('overload',4),...rep('cooling',5)];
+const TRAIN_TYPES=[...rep(null,4),...rep('bearing',3),...rep('imbalance',3),...rep('overload',3),...rep('cooling',3)];
+function makeSet(types,seed0,P){
+  return types.map((f,j)=>{
+    const seed=seed0+j,r=rng(seed*7919+3),R=(a,b)=>a+(b-a)*r();
+    const o={seed,fault:f,onsetDay:R(5.5,9),rampDays:R(2.5,5),mag:R(P.mag[0],P.mag[1]),noise:R(P.noise[0],P.noise[1]),miss:R(P.miss[0],P.miss[1])};
+    o.shiftDay=(r()<P.shift)?R(3.5,10):null;
+    const ds=simulate(o);ds.id=(P.prefix||'S')+String(j+1).padStart(2,'0');return ds;
+  });
+}
+const makeTest=pr=>makeSet(TEST_TYPES,1001,{mag:[0.1,1],noise:pr.noise,miss:pr.miss,shift:pr.shift,prefix:'T'});
+
+/* ---- training: fit on healthy data, choose thresholds on training seeds only ---- */
+function trainAll(){
+  const train=makeSet(TRAIN_TYPES,1,{mag:[0.3,1],noise:[1,1.5],miss:[0,0.03],shift:0,prefix:'TR'});
+  const segs=train.map(d=>({ds:d,from:0,to:d.truth.fault?d.truth.onset:d.n}));
+  const model=fit(segs),scs=train.map(d=>score(d,model));
+  const onsetOf=d=>d.truth.fault?d.truth.onset:Infinity;
+  let theta=4;
+  for(const th of [0.6,0.8,1,1.2,1.4,1.6,1.8,2,2.3,2.6,3,3.5,4]){
+    let fa=0;
+    train.forEach((d,j)=>{extract(scs[j],d,{theta:th,k:4,close:12,closeRatio:0.6}).forEach(a=>{if(a.raiseIdx<onsetOf(d))fa++;});});
+    if(fa===0){theta=th;break;}
+  }
+  theta=Math.round(theta*1.15*100)/100;
+  const P={theta,k:4,close:12,closeRatio:0.6};
+  const acc={},cnt={};
+  train.forEach((d,j)=>{
+    if(!d.truth.fault)return;
+    const hit=extract(scs[j],d,P).find(a=>a.raiseIdx>=d.truth.onset);if(!hit)return;
+    const v=model.keys.map(k=>scs[j].e[k][hit.peakIdx]),nr=Math.hypot(...v)||1,f=d.truth.fault;
+    acc[f]=acc[f]||model.keys.map(()=>0);cnt[f]=(cnt[f]||0)+1;v.forEach((x,i)=>acc[f][i]+=x/nr);
+  });
+  const templates={};
+  Object.keys(acc).forEach(f=>{const nr=Math.hypot(...acc[f])||1;templates[f]=acc[f].map(x=>x/nr);});
+  const bm={mu:{},sd:{}};
+  model.keys.forEach(k=>{let s=0,s2=0,c=0;
+    segs.forEach(g=>{for(let i=g.from;i<g.to;i++){const v=g.ds.y[k][i];if(Number.isFinite(v)){s+=v;s2+=v*v;c++;}}});
+    const m=s/c;bm.mu[k]=m;bm.sd[k]=Math.sqrt(Math.max(1e-12,s2/c-m*m));});
+  let bc=8;
+  for(const c of [2.5,3,3.5,4,4.5,5,6,8]){
+    let fa=0;
+    train.forEach(d=>{const b=baseSeries(d,bm,c);extract(b,d,BASE_P).forEach(a=>{if(a.raiseIdx<onsetOf(d))fa++;});});
+    if(fa===0){bc=c;break;}
+  }
+  return {model,P,templates,bm,bc,train,nTrain:train.length};
+}
+function buildView(ds,ctx,timing){
+  let t0=0;if(timing&&typeof performance!=='undefined')t0=performance.now();
+  const sc=score(ds,ctx.model);
+  if(timing&&typeof performance!=='undefined'){timing.ms+=performance.now()-t0;timing.n+=ds.n;}
+  const alerts=enrich(extract(sc,ds,ctx.P),ds,sc,ctx);
+  let bal=[];if(ctx.bm){const bs=baseSeries(ds,ctx.bm,ctx.bc);bal=extract(bs,ds,BASE_P);}
+  return {ds,sc,alerts,bal,ctx};
+}
+function judge(alerts,onset){let fp=0,hit=null;for(const a of alerts){if(a.raiseIdx<onset)fp++;else if(!hit)hit=a;}return {fp,hit};}
+function aggregate(views){
+  const mk=()=>({tp:0,fp:0,delays:[]});
+  const out={d:mk(),b:mk(),faults:0,days:0,diagOk:0,diagN:0,conf:{}};
+  FKEYS.forEach(f=>out.conf[f]={});
+  views.forEach(v=>{
+    const t=v.ds.truth,on=t.fault?t.onset:Infinity;
+    out.days+=(t.fault?t.onset:v.ds.n)/144;
+    const jd=judge(v.alerts,on),jb=judge(v.bal,on);v.jd=jd;v.jb=jb;
+    out.d.fp+=jd.fp;out.b.fp+=jb.fp;
+    if(t.fault){
+      out.faults++;
+      if(jd.hit){out.d.tp++;out.d.delays.push((jd.hit.raiseIdx-on)/6);
+        const lab=jd.hit.diag&&jd.hit.diag.key?jd.hit.diag.key:'none';
+        out.conf[t.fault][lab]=(out.conf[t.fault][lab]||0)+1;out.diagN++;if(lab===t.fault)out.diagOk++;}
+      else out.conf[t.fault].missed=(out.conf[t.fault].missed||0)+1;
+      if(jb.hit){out.b.tp++;out.b.delays.push((jb.hit.raiseIdx-on)/6);}
+    }
+  });
+  return out;
+}
+// ==ENGINE END==
+
+/* ---------- interface ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let T=null,presetKey='hidden',testSet=[],views=[],agg=null,cur=null,timing={ms:0,n:0};
+
+function fmtT(ds,i){
+  const d=new Date(ds.t0+i*ds.dt*60000),o={day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false};
+  if(ds.tz)o.timeZone=ds.tz;return d.toLocaleString('en-GB',o);
+}
+const fx=(v,dp)=>Number.isFinite(v)?v.toFixed(dp):'n/a';
+const pct=(a,b)=>b?Math.round(100*a/b)+'%':'n/a';
+const SEVTXT={critical:'Critical',warning:'Warning',watch:'Watch'},SEVICON={critical:'▲',warning:'◆',watch:'●'},PRIO={critical:'P1',warning:'P2',watch:'P3'};
+
+function renderMetrics(){
+  const A=agg,hDays=A.days,d=A.d,b=A.b;
+  const prec=x=>x.tp+x.fp?pct(x.tp,x.tp+x.fp):'n/a';
+  const f1=x=>{const p=x.tp+x.fp?x.tp/(x.tp+x.fp):0,r=A.faults?x.tp/A.faults:0;return p+r?(2*p*r/(p+r)).toFixed(2):'0.00';};
+  const per100=x=>(100*x.fp/Math.max(1,hDays)).toFixed(1);
+  const md=x=>x.delays.length?(median(x.delays)).toFixed(1)+' h':'n/a';
+  $('summary').textContent='On '+testSet.length+' hidden scenarios MachinaSense caught '+d.tp+' of '+A.faults+' faults with '+d.fp+' false alarm'+(d.fp===1?'':'s')+
+    '. Static limits caught '+b.tp+' with '+b.fp+' false alarm'+(b.fp===1?'':'s')+'.';
+  const rows=[
+    ['Faults detected',b.tp+' of '+A.faults+' ('+pct(b.tp,A.faults)+')',d.tp+' of '+A.faults+' ('+pct(d.tp,A.faults)+')'],
+    ['False alarms',b.fp+' ('+per100(b)+' per 100 healthy machine-days)',d.fp+' ('+per100(d)+' per 100 healthy machine-days)'],
+    ['Precision',prec(b),prec(d)],
+    ['F1 score',f1(b),f1(d)],
+    ['Median time to detect',md(b),md(d)],
+    ['Diagnosis correct','not available',A.diagN?A.diagOk+' of '+A.diagN+' ('+pct(A.diagOk,A.diagN)+')':'n/a']
+  ];
+  $('metrics').innerHTML='<thead><tr><th>Metric</th><th>Static limits</th><th>MachinaSense</th></tr></thead><tbody>'+
+    rows.map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td><td class="us">'+esc(r[2])+'</td></tr>').join('')+'</tbody>';
+  const cols=[...FKEYS,'none','missed'],colName={none:'Unclassified',missed:'Missed'};
+  let mx=1;FKEYS.forEach(f=>cols.forEach(c=>{mx=Math.max(mx,A.conf[f][c]||0);}));
+  $('confusion').innerHTML='<thead><tr><th>True fault</th>'+cols.map(c=>'<th>'+esc(colName[c]||FAULTS[c].label.split(' ')[0])+'</th>').join('')+'</tr></thead><tbody>'+
+    FKEYS.map(f=>'<tr><td>'+esc(FAULTS[f].label.split(' or ')[0])+'</td>'+cols.map(c=>{const v=A.conf[f][c]||0;
+      const bg=v?'background:color-mix(in srgb, var('+(c===f?'--accent':'--warn')+') '+Math.round(15+60*v/mx)+'%, transparent)':'';
+      return '<td style="'+bg+'">'+(v||'')+'</td>';}).join('')+'</tr>').join('')+'</tbody>';
+  const nf=T.model.nf,floats=T.model.keys.length*(nf+8)+8,us=timing.n?(timing.ms*1000/timing.n):NaN;
+  $('foot').textContent='Edge footprint: '+(Number.isFinite(us)?'about '+us.toFixed(1)+' microseconds per sample in this browser, ':'')+
+    'about '+floats+' stored values ('+(floats*4/1024).toFixed(2)+' KB as 32-bit floats), only additions and multiplications at run time.';
+}
+
+function runTest(){
+  const pr=PRESETS[presetKey];
+  testSet=makeTest(pr);timing={ms:0,n:0};
+  views=testSet.map(ds=>buildView(ds,T,timing));
+  agg=aggregate(views);
+  $('presetdesc').textContent=pr.desc;
+  document.querySelectorAll('#presets .chip').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===presetKey)));
+  renderMetrics();
+  const keep=cur&&cur.ds.id&&/^T\d\d$/.test(cur.ds.id)?testSet.findIndex(d=>d.id===cur.ds.id):-1;
+  fillSelect(keep);
+}
+function fillSelect(keep){
+  const sel=$('scn');
+  sel.innerHTML=views.map((v,i)=>{
+    const t=v.ds.truth,name=t.fault?FAULTS[t.fault].label:'Healthy run';
+    const mark=t.fault?('ours '+(v.jd.hit?'✓':'✗')+' · limits '+(v.jb.hit?'✓':'✗')):('ours '+(v.jd.fp?v.jd.fp+' false':'quiet')+' · limits '+(v.jb.fp?v.jb.fp+' false':'quiet'));
+    return '<option value="'+i+'">'+esc(v.ds.id+' · '+name+(t.shiftAt!=null?' · load change':'')+' · '+mark)+'</option>';
+  }).join('');
+  let idx=keep;
+  if(idx==null||idx<0){
+    idx=views.findIndex(v=>v.ds.truth.fault&&v.ds.truth.shiftAt!=null&&v.jd.hit&&v.jb.fp>0);
+    if(idx<0)idx=views.findIndex(v=>v.ds.truth.fault&&v.jd.hit);
+    if(idx<0)idx=0;
+  }
+  sel.value=String(idx);showView(views[idx]);
+}
+
+/* ---- chart ---- */
+function drawChart(host,V){
+  const ds=V.ds,sc=V.sc,n=ds.n,W=Math.max(340,Math.floor(host.clientWidth)||800);
+  const L=64,R=14,pw=W-L-R,X=i=>L+pw*i/(n-1);
+  let mx=0;for(let i=0;i<n;i++)if(sc.S[i]>mx)mx=sc.S[i];
+  const yMax=Math.min(60,Math.max(12,mx*1.1)),theta=V.ctx.P.theta,th=Math.max(0,theta);
+  let y=8;const sTop=y,sH=150;y+=sH;const bTop=y+6;y+=28;
+  const sens=[];
+  if(ds.load)sens.push({key:'__load',label:'Load',unit:'%',dp:0,arr:ds.load,pred:null});
+  ds.sensors.forEach(s=>sens.push({key:s.key,label:s.label,unit:s.unit,dp:s.dp,arr:ds.y[s.key],pred:sc.pred[s.key]}));
+  sens.forEach(s=>{s.top=y+10;s.h=82;y+=92;});
+  const axisTop=y,H=y+32;
+  const fyS=v=>sTop+sH-sH*Math.min(v,yMax)/yMax;
+  const pathOf=(arr,fy)=>{let d='',pen=false;for(let i=0;i<n;i++){const v=arr[i];if(!Number.isFinite(v)){pen=false;continue;}d+=(pen?'L':'M')+X(i).toFixed(1)+' '+fy(v).toFixed(1);pen=true;}return d;};
+  let s='<svg id="chartsvg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" tabindex="0" aria-label="Sensor readings, expected values and anomaly score over time. Alerts are listed below the chart.">';
+  const sevVar={critical:'--crit',warning:'--warn',watch:'--watch'};
+  V.alerts.forEach(a=>{const x1=X(a.startIdx),x2=X(a.endIdx==null?n-1:a.endIdx);
+    s+='<rect x="'+x1.toFixed(1)+'" y="'+sTop+'" width="'+Math.max(2,x2-x1).toFixed(1)+'" height="'+(axisTop-sTop)+'" style="fill:var('+sevVar[a.sev]+')" fill-opacity="0.13"/>';});
+  // score panel
+  const zone=(a,b,c)=>{if(b<=a)return'';const ya=fyS(Math.min(b,yMax)),yb=fyS(Math.min(a,yMax));return '<rect x="'+L+'" y="'+ya.toFixed(1)+'" width="'+pw+'" height="'+Math.max(0,yb-ya).toFixed(1)+'" style="fill:var('+c+')" fill-opacity="0.07"/>';};
+  s+=zone(th,SEV_WARN,'--watch')+zone(SEV_WARN,SEV_CRIT,'--warn')+zone(SEV_CRIT,yMax,'--crit');
+  const ticks=[0,2,4,8,16,32,64].filter(v=>v<=yMax);
+  ticks.forEach(v=>{s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+fyS(v).toFixed(1)+'" y2="'+fyS(v).toFixed(1)+'" style="stroke:var(--line)"/><text x="'+(L-8)+'" y="'+(fyS(v)+4).toFixed(1)+'" text-anchor="end" font-size="11" style="fill:var(--muted)">'+v+'σ</text>';});
+  const zl=(v,t)=>'<text x="'+(W-R-4)+'" y="'+(fyS(v)-4).toFixed(1)+'" text-anchor="end" font-size="10" style="fill:var(--ink2)">'+t+'</text>';
+  if(th<SEV_WARN)s+=zl(th,'Watch from '+th+'σ');
+  s+=zl(SEV_WARN,'Warning from 4σ')+(yMax>SEV_CRIT?zl(SEV_CRIT,'Critical from 8σ'):'');
+  s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+fyS(th).toFixed(1)+'" y2="'+fyS(th).toFixed(1)+'" style="stroke:var(--ink2)" stroke-opacity="0.5"/>';
+  s+='<text x="'+L+'" y="'+(sTop-0)+'" font-size="11" font-weight="600" style="fill:var(--ink2)" dy="-0"></text>';
+  s+='<path d="'+pathOf(sc.S,fyS)+'" fill="none" style="stroke:var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+  V.alerts.forEach(a=>{s+='<circle cx="'+X(a.peakIdx).toFixed(1)+'" cy="'+fyS(a.peakS).toFixed(1)+'" r="4.5" style="fill:var('+sevVar[a.sev]+');stroke:var(--surface)" stroke-width="2"/>';
+    s+='<text x="'+(X(a.startIdx)+4).toFixed(1)+'" y="'+(sTop+14)+'" font-size="11" font-weight="600" style="fill:var(--ink)">A'+a.no+'</text>';});
+  s+='<text x="'+(L+6)+'" y="'+(sTop+14)+'" font-size="11" style="fill:var(--muted)"></text>';
+  s+='<text x="6" y="'+(sTop+14)+'" font-size="11" font-weight="600" style="fill:var(--ink2)">Deviation</text><text x="6" y="'+(sTop+27)+'" font-size="10" style="fill:var(--muted)">worst sensor</text>';
+  // static-limit alarm row
+  s+='<text x="6" y="'+(bTop+13)+'" font-size="10" style="fill:var(--muted)">Static-limit</text><text x="6" y="'+(bTop+24)+'" font-size="10" style="fill:var(--muted)">alarms</text>';
+  s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+(bTop+26)+'" y2="'+(bTop+26)+'" style="stroke:var(--line)"/>';
+  V.bal.forEach(a=>{s+='<line x1="'+X(a.raiseIdx).toFixed(1)+'" x2="'+X(a.raiseIdx).toFixed(1)+'" y1="'+(bTop+4)+'" y2="'+(bTop+24)+'" style="stroke:var(--ink2)" stroke-width="2.5"/>';});
+  // sensor panels
+  sens.forEach(p=>{
+    let lo=Infinity,hi=-Infinity;
+    for(let i=0;i<n;i+=2){const v=p.arr[i];if(Number.isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}const q=p.pred?p.pred[i]:NaN;if(Number.isFinite(q)){if(q<lo)lo=q;if(q>hi)hi=q;}}
+    if(!Number.isFinite(lo)){lo=0;hi=1;}if(hi-lo<1e-9){hi=lo+1;}const pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
+    const fy=v=>p.top+p.h-(v-lo)/(hi-lo)*p.h;
+    [lo+pad,(lo+hi)/2,hi-pad].forEach(v=>{s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+fy(v).toFixed(1)+'" y2="'+fy(v).toFixed(1)+'" style="stroke:var(--line)"/><text x="'+(L-8)+'" y="'+(fy(v)+4).toFixed(1)+'" text-anchor="end" font-size="10.5" style="fill:var(--muted)">'+v.toFixed(p.dp)+'</text>';});
+    s+='<text x="'+(L+6)+'" y="'+(p.top+12)+'" font-size="11" font-weight="600" style="fill:var(--ink2)">'+esc(p.label)+' ('+esc(p.unit||'')+')</text>';
+    s+='<path d="'+pathOf(p.arr,fy)+'" fill="none" style="stroke:var(--ink2)" stroke-opacity="0.7" stroke-width="1.2" stroke-linejoin="round"/>';
+    if(p.pred)s+='<path d="'+pathOf(p.pred,fy)+'" fill="none" style="stroke:var(--accent)" stroke-width="1.6" stroke-linejoin="round"/>';
+  });
+  // truth markers
+  const tr=ds.truth;
+  if(tr&&tr.fault){const x=X(tr.onset),flip=x>W-190;
+    s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+sTop+'" y2="'+axisTop+'" style="stroke:var(--ink2)" stroke-width="1.5" stroke-dasharray="2 4"/>';
+    s+='<text x="'+(flip?x-5:x+5).toFixed(1)+'" y="'+(sTop+sH-8)+'" text-anchor="'+(flip?'end':'start')+'" font-size="10.5" style="fill:var(--ink2)">fault onset (ground truth)</text>';}
+  if(tr&&tr.shiftAt!=null&&ds.load){const x=X(tr.shiftAt),p=sens[0],flip=x>W-170;
+    s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+p.top+'" y2="'+(p.top+p.h)+'" style="stroke:var(--ink2)" stroke-width="1.5" stroke-dasharray="2 4"/>';
+    s+='<text x="'+(flip?x-5:x+5).toFixed(1)+'" y="'+(p.top+p.h-6)+'" text-anchor="'+(flip?'end':'start')+'" font-size="10.5" style="fill:var(--ink2)">load regime change</text>';}
+  // time axis
+  const spanMin=n*ds.dt,steps=[60,120,360,720,1440,2880,10080],step=steps.find(m=>spanMin/m<=8)||10080;
+  for(let m=0;m<=spanMin;m+=step){const i=Math.min(n-1,Math.round(m/ds.dt));
+    const d=new Date(ds.t0+i*ds.dt*60000),o=step<1440?{hour:'2-digit',minute:'2-digit',hour12:false}:{day:'numeric',month:'short'};if(ds.tz)o.timeZone=ds.tz;
+    s+='<line x1="'+X(i).toFixed(1)+'" x2="'+X(i).toFixed(1)+'" y1="'+axisTop+'" y2="'+(axisTop+5)+'" style="stroke:var(--muted)"/><text x="'+X(i).toFixed(1)+'" y="'+(axisTop+19)+'" text-anchor="middle" font-size="11" style="fill:var(--muted)">'+d.toLocaleString('en-GB',o)+'</text>';}
+  s+='<line id="xh" x1="0" x2="0" y1="'+sTop+'" y2="'+axisTop+'" style="stroke:var(--ink)" stroke-opacity="0.55" visibility="hidden"/>';
+  s+='<rect id="hit" x="'+L+'" y="'+sTop+'" width="'+pw+'" height="'+(axisTop-sTop)+'" fill="transparent"/></svg>';
+  host.innerHTML=s;
+  const svg=host.querySelector('svg'),xh=svg.querySelector('#xh'),ro=$('readout');let idx=0;
+  const show=i=>{
+    idx=Math.max(0,Math.min(n-1,i));const x=X(idx);xh.setAttribute('x1',x);xh.setAttribute('x2',x);xh.setAttribute('visibility','visible');
+    ro.textContent='';
+    const add=(a,b)=>{const sp=document.createElement('span');sp.appendChild(document.createTextNode(a+' '));const bb=document.createElement('b');bb.textContent=b;sp.appendChild(bb);ro.appendChild(sp);};
+    add(fmtT(ds,idx),'');add('Deviation',fx(sc.S[idx],1)+'σ');
+    if(ds.load)add('Load',fx(ds.load[idx],0)+'%');
+    ds.sensors.forEach(sn=>{const v=ds.y[sn.key][idx];add(sn.label,Number.isFinite(v)?fx(v,sn.dp)+' (expected '+fx(sc.pred[sn.key][idx],sn.dp)+')':'missing sample');});
+  };
+  const at=ev=>{const r=svg.getBoundingClientRect();show(Math.round(((ev.clientX-r.left)*(W/r.width)-L)/pw*(n-1)));};
+  svg.addEventListener('pointermove',at);svg.addEventListener('pointerdown',at);
+  svg.addEventListener('keydown',ev=>{if(ev.key==='ArrowRight'){ev.preventDefault();show(idx+(ev.shiftKey?144:6));}if(ev.key==='ArrowLeft'){ev.preventDefault();show(idx-(ev.shiftKey?144:6));}});
+}
+
+function alertCards(V){
+  const ds=V.ds,host=$('alerts'),ctx=V.ctx;
+  let html='';
+  if(!V.alerts.length)html='<p class="sub" style="margin:0">No alerts were raised in this scenario.</p>';
+  V.alerts.forEach(a=>{
+    const col={critical:'--crit',warning:'--warn',watch:'--watch'}[a.sev];
+    html+='<article class="card"><div class="chead"><h3>Alert '+a.no+'</h3><span class="sev '+a.sev+'"><span aria-hidden="true">'+SEVICON[a.sev]+'</span>'+SEVTXT[a.sev]+' · '+PRIO[a.sev]+'</span>'+
+      '<span class="when">Raised '+esc(fmtT(ds,a.raiseIdx))+' · peak '+esc(fmtT(ds,a.peakIdx))+' · '+(a.endIdx==null?'still open':'cleared '+esc(fmtT(ds,a.endIdx)))+'</span></div>';
+    html+='<p class="lab">Measured (verified from the data)</p>'+a.evidence.map(e=>{
+      const w=Math.min(100,Math.abs(e.z)/12*100);
+      return '<div class="ev"><div class="evn">'+esc(e.label)+'<small>'+fx(e.obs,e.dp)+' vs '+fx(e.exp,e.dp)+' expected '+esc(e.unit||'')+' ('+(e.dev>=0?'+':'')+fx(e.dev,e.dp)+')</small></div>'+
+        '<div class="bar" style="--bar:var('+col+')"><i style="width:'+w.toFixed(0)+'%"></i></div><b>'+(e.z>=0?'+':'')+e.z.toFixed(1)+'σ</b></div>';}).join('');
+    html+='<p class="lab">Inferred (a judgement, not a measurement)</p>';
+    if(a.diag){
+      if(a.diag.key){const f=FAULTS[a.diag.key];
+        html+='<p class="inf"><b>Likely cause: '+esc(f.label)+'.</b> The pattern across sensors matches the learned signature with similarity '+a.diag.cos.toFixed(2)+' out of 1.00. Next best: '+esc(FAULTS[a.diag.rank[1].key].label)+' at '+a.diag.rank[1].cos.toFixed(2)+'.<br>'+esc(f.action)+'</p>';}
+      else html+='<p class="inf"><b>Unclassified.</b> The pattern does not match a known fault signature (closest: '+esc(FAULTS[a.diag.top].label)+' at '+a.diag.cos.toFixed(2)+'). Use the measured deviations above to decide where to look.</p>';
+    }else html+='<p class="inf">No cause is inferred for custom sensors because there are no learned fault signatures for them. The measured deviations above show where to look.</p>';
+    html+='</article>';
+  });
+  if(ctx.bm)html+='<p class="note">Static limits raised '+V.bal.length+' alarm'+(V.bal.length===1?'':'s')+' on this scenario.</p>';
+  host.innerHTML=html;
+}
+function showView(V){
+  cur=V;const ds=V.ds,t=ds.truth,info=$('info');
+  if(t){
+    info.textContent='Ground truth (never shown to the detector): '+(t.fault?FAULTS[t.fault].label+' from '+fmtT(ds,t.onset)+', severity '+t.mag.toFixed(2)+', developing over '+(t.ramp/144).toFixed(1)+' days':'healthy machine, no fault')+
+      (t.shiftAt!=null?'; load regime change on '+fmtT(ds,t.shiftAt):'')+'; sensor noise '+t.noise.toFixed(1)+'x; '+Math.round(t.miss*100)+'% missing samples.';
+  }
+  drawChart($('chart'),V);alertCards(V);
+}
+
+/* ---- CSV import ---- */
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<60)throw new Error('The file needs a header row and at least 60 data rows.');
+  const delim=[',',';','\t'].map(d=>[d,lines[0].split(d).length]).sort((a,b)=>b[1]-a[1])[0][0];
+  const head=lines[0].split(delim).map(s=>s.trim().replace(/^"|"$/g,''));
+  const rows=lines.slice(1).map(l=>l.split(delim).map(s=>s.trim().replace(/^"|"$/g,'')));
+  const n=rows.length;
+  const col=j=>{const a=new Float64Array(n);for(let i=0;i<n;i++){const c=rows[i][j];const v=c===''||c==null?NaN:Number(c);a[i]=Number.isFinite(v)?v:NaN;}return a;};
+  let tcol=head.findIndex(h=>/time|date|stamp/i.test(h)),lcol=head.findIndex(h=>/^load/i.test(h)),acol=head.findIndex(h=>/^amb/i.test(h));
+  const sensors=[],y={};
+  head.forEach((h,j)=>{if(j===tcol||j===lcol||j===acol)return;const a=col(j);let ok=0;for(let i=0;i<n;i++)if(Number.isFinite(a[i]))ok++;
+    if(ok>=0.6*n){const key='c'+j;sensors.push({key,label:h||('Column '+(j+1)),unit:'',dp:2});y[key]=a;}});
+  if(!sensors.length)throw new Error('No numeric sensor columns were found.');
+  let t0=Date.now(),dt=10,tz;
+  if(tcol>=0){const a=Date.parse(rows[0][tcol]),b=Date.parse(rows[1][tcol]);if(Number.isFinite(a)&&Number.isFinite(b)&&b>a){t0=a;dt=(b-a)/60000;}}
+  else{t0=Date.UTC(2026,0,1);tz='UTC';}
+  return {id:'CSV',n,t0,dt,tz,load:lcol>=0?col(lcol):null,amb:acol>=0?col(acol):null,sensors,y,truth:null,nCols:head.length};
+}
+function runCSV(){
+  const err=$('csverr');err.textContent='';
+  const go=text=>{
+    try{
+      const ds=parseCSV(text),nb=Math.floor(ds.n*Number($('csvfrac').value));
+      if(nb<100)throw new Error('The healthy baseline has fewer than 100 rows. Use a longer file or a larger baseline share.');
+      const model=fit([{ds,from:0,to:nb}]),sc0=score(ds,model);
+      let mx=0;for(let i=Math.min(60,nb>>1);i<nb;i++)if(sc0.S[i]>mx)mx=sc0.S[i];
+      const P={theta:Math.max(1.2,Math.round(mx*1.25*100)/100),k:4,close:12,closeRatio:0.6};
+      const ctx={model,P,templates:null,bm:null};
+      const V=buildView(ds,ctx);
+      $('info').textContent='Your data: '+ds.n+' rows, one every '+ds.dt.toFixed(ds.dt%1?1:0)+' minutes, '+ds.sensors.length+' sensor column'+(ds.sensors.length===1?'':'s')+(ds.load?', load as an operating condition':'')+(ds.amb?', ambient as an operating condition':'')+
+        '. The first '+nb+' rows were treated as healthy. Alert threshold set automatically to '+P.theta+'σ. There are no labels, so no accuracy numbers are shown.';
+      cur=V;drawChart($('chart'),V);alertCards(V);$('ex-h').scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(e){err.textContent=e.message;}
+  };
+  const f=$('csvfile').files[0];
+  if(f){const r=new FileReader();r.onload=()=>go(String(r.result));r.onerror=()=>{err.textContent='That file could not be read.';};r.readAsText(f);}
+  else if($('csvtext').value.trim())go($('csvtext').value);
+  else err.textContent='Choose a CSV file or paste CSV text first.';
+}
+
+/* ---- boot ---- */
+$('presets').innerHTML=Object.keys(PRESETS).map(k=>'<button type="button" class="chip" data-k="'+k+'" aria-pressed="false">'+PRESETS[k].name+'</button>').join('');
+$('presets').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b){presetKey=b.dataset.k;runTest();}});
+$('scn').addEventListener('change',e=>showView(views[Number(e.target.value)]));
+$('csvgo').addEventListener('click',runCSV);
+let rt=null;
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(cur)drawChart($('chart'),cur);},120);}).observe($('chart'));
+T=trainAll();
+runTest();
+</script>
+</body>
+</html>
